@@ -22,8 +22,10 @@ COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/package.json /app/package-lock.json ./
 COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/node_modules ./node_modules
-RUN mkdir -p /data && chown -R cryptolyst:nodejs /data /app
+RUN chmod +x /app/scripts/docker-entrypoint.sh \
+    && mkdir -p /data \
+    && chown -R cryptolyst:nodejs /data /app
 USER cryptolyst
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 CMD wget -qO- http://127.0.0.1:3000/api/health || exit 1
-CMD ["sh", "-c", "npm run db:init && node node_modules/next/dist/bin/next start"]
+CMD ["/app/scripts/docker-entrypoint.sh"]
