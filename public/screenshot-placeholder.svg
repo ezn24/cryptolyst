@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-label="Cryptolyst screenshot placeholder">
+  <rect width="1200" height="720" fill="#101214"/>
+  <rect x="40" y="40" width="250" height="640" rx="8" fill="#15181b" stroke="#2b3035"/>
+  <rect x="320" y="72" width="820" height="90" rx="8" fill="#15181b" stroke="#2b3035"/>
+  <rect x="320" y="190" width="250" height="120" rx="8" fill="#15181b" stroke="#2b3035"/>
+  <rect x="590" y="190" width="250" height="120" rx="8" fill="#15181b" stroke="#2b3035"/>
+  <rect x="860" y="190" width="280" height="120" rx="8" fill="#15181b" stroke="#2b3035"/>
+  <rect x="320" y="340" width="820" height="300" rx="8" fill="#15181b" stroke="#2b3035"/>
+  <text x="80" y="96" fill="#e8ecef" font-family="Arial" font-size="28" font-weight="700">Cryptolyst</text>
+  <text x="360" y="130" fill="#34d399" font-family="Arial" font-size="36" font-weight="700">Portfolio analytics</text>
+</svg>

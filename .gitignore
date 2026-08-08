@@ -13,6 +13,12 @@
 # testing
 /coverage
 
+# local sqlite data
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
 # next.js
 /.next/
 /out/
@@ -32,6 +38,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -39,3 +46,5 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+/.logs/

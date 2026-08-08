@@ -1,0 +1,115 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Asset {
+  id             String         @id @default(cuid())
+  symbol         String         @unique
+  name           String
+  coingeckoId    String?
+  binanceSymbol  String?
+  priceSource    String         @default("coingecko")
+  currentPrice   Decimal        @default(0)
+  priceCurrency  String         @default("USDT")
+  priceUpdatedAt DateTime?
+  priceChange24h Decimal        @default(0)
+  iconUrl        String?
+  color          String         @default("#64748B")
+  isActive       Boolean        @default(true)
+  sortOrder      Int            @default(0)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  buyLots        BuyLot[]
+  priceHistory   PriceHistory[]
+}
+
+model BuyLot {
+  id          String         @id @default(cuid())
+  assetId     String
+  date        DateTime
+  price       Decimal
+  quantity    Decimal
+  fee         Decimal        @default(0)
+  feeCurrency String         @default("USDT")
+  exchange    String?
+  account     String?
+  note        String?
+  isIncluded  Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  asset       Asset          @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  sales       Sale[]
+  targets     ProfitTarget[]
+
+  @@index([assetId])
+  @@index([date])
+}
+
+model Sale {
+  id          String   @id @default(cuid())
+  buyLotId    String
+  date        DateTime
+  price       Decimal
+  quantity    Decimal
+  fee         Decimal  @default(0)
+  feeCurrency String   @default("USDT")
+  exchange    String?
+  account     String?
+  note        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  buyLot      BuyLot   @relation(fields: [buyLotId], references: [id], onDelete: Cascade)
+
+  @@index([buyLotId])
+  @@index([date])
+}
+
+model ProfitTarget {
+  id             String    @id @default(cuid())
+  buyLotId       String
+  targetPercent  Decimal
+  targetPrice    Decimal
+  targetQuantity Decimal
+  isReached      Boolean   @default(false)
+  reachedAt      DateTime?
+  note           String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  buyLot         BuyLot    @relation(fields: [buyLotId], references: [id], onDelete: Cascade)
+
+  @@index([buyLotId])
+  @@index([isReached])
+}
+
+model PriceHistory {
+  id        String   @id @default(cuid())
+  assetId   String
+  price     Decimal
+  currency  String   @default("USDT")
+  source    String
+  timestamp DateTime @default(now())
+  asset     Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId, timestamp])
+  @@unique([assetId, source, timestamp])
+}
+
+model AppSetting {
+  id                   String   @id @default("singleton")
+  baseCurrency         String   @default("USDT")
+  priceProvider        String   @default("coingecko")
+  priceRefreshInterval Int      @default(5)
+  timezone             String   @default("Asia/Singapore")
+  theme                String   @default("dark")
+  decimalPrecision     Int      @default(8)
+  defaultFeeCurrency   String   @default("USDT")
+  portfolioChartRange  String   @default("30D")
+  showCompletedLots    Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
