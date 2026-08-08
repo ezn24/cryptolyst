@@ -12,6 +12,9 @@ export const metadata: Metadata = {
   description: "Self-hosted crypto trade journal and portfolio analytics",
 };
 
+// Theme preferences live in SQLite, so the root layout must be rendered per request.
+export const dynamic = "force-dynamic";
+
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const settings = await prisma.appSetting.findUnique({
     where: { id: "singleton" },
