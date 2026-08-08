@@ -19,6 +19,7 @@ import { prisma } from "@/lib/db";
 import { asBool, formText } from "@/lib/utils";
 import { D } from "@/lib/decimal";
 import { buyLotSchema, saleSchema, settingSchema } from "@/lib/validation/schemas";
+import { parseJsonBackup } from "@/lib/import/json-backup";
 
 export type ActionResult = {
   ok: boolean;
@@ -429,6 +430,43 @@ export async function importTransactionsCsvAction(formData: FormData): Promise<A
 
     refreshAsset();
     return success(`匯入完成：${result.buyCount} 筆買入、${result.saleCount} 筆賣出`);
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function importJsonBackupAction(formData: FormData): Promise<ActionResult> {
+  try {
+    await requireSession();
+    const jsonText = formText(formData, "jsonText");
+    if (!jsonText) throw new Error("JSON 內容為空");
+    const backup = parseJsonBackup(jsonText);
+
+    await prisma.$transaction(async (tx) => {
+      const existingCounts = await Promise.all([
+        tx.asset.count(), tx.buyLot.count(), tx.sale.count(),
+        tx.profitTarget.count(), tx.priceHistory.count(),
+      ]);
+      if (existingCounts.some((count) => count > 0)) {
+        throw new Error("目前資料庫已有投資資料；JSON 完整還原只允許用於空白資料庫，以避免覆蓋現有紀錄。");
+      }
+
+      if (backup.assets.length) await tx.asset.createMany({ data: backup.assets });
+      if (backup.buyLots.length) await tx.buyLot.createMany({ data: backup.buyLots });
+      if (backup.sales.length) await tx.sale.createMany({ data: backup.sales });
+      if (backup.targets.length) await tx.profitTarget.createMany({ data: backup.targets });
+      if (backup.priceHistory.length) await tx.priceHistory.createMany({ data: backup.priceHistory });
+      for (const setting of backup.settings) {
+        await tx.appSetting.upsert({ where: { id: setting.id }, create: setting, update: setting });
+      }
+    }, { maxWait: 10_000, timeout: 60_000 });
+
+    await reschedulePriceScheduler();
+    revalidatePath("/", "layout");
+    return success(
+      `JSON 還原完成：${backup.assets.length} 個資產、${backup.buyLots.length} 個批次、` +
+      `${backup.sales.length} 筆賣出、${backup.targets.length} 個目標、${backup.priceHistory.length} 筆價格歷史`,
+    );
   } catch (error) {
     return failure(error);
   }

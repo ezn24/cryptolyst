@@ -1,6 +1,7 @@
 import { DatabaseBackup, Download } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { CsvImporter } from "@/components/csv-importer";
+import { JsonBackupImporter } from "@/components/json-backup-importer";
 import { LinkButton, Panel } from "@/components/ui/primitives";
 
 export default function ImportExportPage() {
@@ -28,6 +29,11 @@ export default function ImportExportPage() {
             <h2 className="font-semibold">完整備份</h2>
             <p className="mt-1 text-sm text-zinc-500">下載可稽核的 JSON 備份，包含資產、批次、賣出、目標與價格歷史。</p>
             <div className="mt-4"><LinkButton href="/api/backup/json"><DatabaseBackup className="h-4 w-4" />下載 JSON 備份</LinkButton></div>
+          </Panel>
+          <Panel>
+            <h2 className="font-semibold">匯入 JSON 備份</h2>
+            <p className="mt-1 text-sm text-zinc-500">在新的空白資料庫中還原 Cryptolyst 完整備份。</p>
+            <div className="mt-4"><JsonBackupImporter /></div>
           </Panel>
           <Panel>
             <h2 className="font-semibold">舊 Excel 遷移</h2>
