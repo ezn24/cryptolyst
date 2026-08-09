@@ -1,20 +1,20 @@
 services:
   cryptolyst:
-    build: .
+    image: "${CRYPTOLYST_IMAGE:-1030283726/cryptolyst:latest}"
     container_name: cryptolyst
     restart: unless-stopped
     ports:
-      - "8088:3000"
+      - "${PORT:-3000}:3000"
     environment:
       DATABASE_URL: "file:/data/cryptolyst.db"
       APP_PASSWORD_HASH: "${APP_PASSWORD_HASH}"
       SESSION_SECRET: "${SESSION_SECRET}"
       PRICE_PROVIDER: "${PRICE_PROVIDER:-coingecko}"
       PRICE_REFRESH_INTERVAL_MINUTES: "${PRICE_REFRESH_INTERVAL_MINUTES:-5}"
-      TZ: "Asia/Singapore"
+      TZ: "${TZ:-UTC}"
       TRUST_PROXY: "true"
     volumes:
-      - /volume2/docker/cryptolyst/data:/data
+      - cryptolyst-data:/data
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health || exit 1"]
       interval: 30s
@@ -22,3 +22,5 @@ services:
       retries: 3
       start_period: 30s
 
+volumes:
+  cryptolyst-data:

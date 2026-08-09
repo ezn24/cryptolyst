@@ -1,68 +1,153 @@
 # Cryptolyst
 
-Cryptolyst is a self-hosted crypto trade journal and portfolio analytics app for a single user. It tracks assets, independent buy lots, unlimited partial sales, realized/unrealized P&L, profit targets, current prices, CSV export, JSON backup, and a dry-run legacy Excel importer.
+[![Docker publish](https://github.com/ezn24/cryptolyst/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/ezn24/cryptolyst/actions/workflows/docker-publish.yml)
+[![Docker Hub](https://img.shields.io/docker/pulls/1030283726/cryptolyst)](https://hub.docker.com/r/1030283726/cryptolyst)
 
-![Screenshot placeholder](public/screenshot-placeholder.svg)
+Cryptolyst is a self-hosted cryptocurrency trade journal and portfolio analytics application. It keeps each asset and buy lot separate, calculates realized and unrealized profit with decimal arithmetic, tracks partial sales and profit targets, and refreshes market prices automatically.
 
-## Stack
+![Cryptolyst screenshot](public/screenshot-placeholder.svg)
 
-- Next.js App Router, TypeScript, React Server Components, Server Actions
-- Tailwind CSS, Lucide Icons, Recharts
-- Prisma ORM with SQLite
-- Decimal arithmetic via `decimal.js`
-- Password login with bcrypt hash and HttpOnly cookie session
-- Docker Compose deployment for Synology NAS
+## Features
 
-## Local Development
+- Asset-grouped investment ledgers with independent charts
+- Buy lots, unlimited partial sales, fees, exchanges, accounts, and notes
+- Remaining cost, average entry, break-even status, realized and unrealized P&L
+- Per-lot profit targets and target-price tracking
+- CoinGecko and Binance public price providers
+- Configurable background price refresh interval
+- Per-asset colors and coin icons
+- Light, dark, and system themes
+- CSV transaction import and export
+- Full JSON backup export and restore into a new database
+- Legacy spreadsheet migration utility
+- Single-user password authentication with bcrypt
+- SQLite persistence with no external database service required
+
+## Quick Start with Docker Compose
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/ezn24/cryptolyst.git
+cd cryptolyst
+```
+
+### 2. Create the environment file
+
+```bash
+cp .env.example .env
+```
+
+Generate a bcrypt password hash:
 
 ```bash
 npm install
+npm run hash-password -- "choose-a-strong-password"
+```
+
+Copy the printed **Docker Compose `.env`** value to `APP_PASSWORD_HASH`, then generate a session secret:
+
+```bash
+openssl rand -hex 32
+```
+
+Your `.env` should contain at least:
+
+```env
+APP_PASSWORD_HASH=$$2b$$12$$...
+SESSION_SECRET=replace-with-at-least-32-random-characters
+```
+
+### 3. Start Cryptolyst
+
+```bash
+docker compose up -d
+```
+
+Open [http://localhost:3000](http://localhost:3000).
+
+The Compose project uses the `cryptolyst-data` named volume for the SQLite database. Container recreation and image updates do not remove this volume.
+
+## Updating
+
+```bash
+docker compose pull
+docker compose up -d --force-recreate
+```
+
+To pin a specific image version, set `CRYPTOLYST_IMAGE` in `.env`:
+
+```env
+CRYPTOLYST_IMAGE=1030283726/cryptolyst:sha-6224090
+```
+
+## Docker CLI
+
+```bash
+docker volume create cryptolyst-data
+
+docker run -d \
+  --name cryptolyst \
+  --restart unless-stopped \
+  -p 3000:3000 \
+  -e DATABASE_URL=file:/data/cryptolyst.db \
+  -e APP_PASSWORD_HASH='\$2b\$12\$...' \
+  -e SESSION_SECRET='replace-with-at-least-32-random-characters' \
+  -v cryptolyst-data:/data \
+  1030283726/cryptolyst:latest
+```
+
+## Build from Source
+
+```bash
+docker build -t cryptolyst:local .
+```
+
+Run the locally built image:
+
+```bash
+docker run -d \
+  --name cryptolyst \
+  -p 3000:3000 \
+  -e DATABASE_URL=file:/data/cryptolyst.db \
+  -e APP_PASSWORD_HASH='\$2b\$12\$...' \
+  -e SESSION_SECRET='replace-with-at-least-32-random-characters' \
+  -v cryptolyst-data:/data \
+  cryptolyst:local
+```
+
+## Configuration
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `DATABASE_URL` | `file:/data/cryptolyst.db` | Prisma SQLite URL inside the container |
+| `APP_PASSWORD_HASH` | Required | bcrypt `$2a$`, `$2b$`, or `$2y$` password hash |
+| `SESSION_SECRET` | Required | Random session-signing secret of at least 32 characters |
+| `PRICE_PROVIDER` | `coingecko` | Default market price provider |
+| `PRICE_REFRESH_INTERVAL_MINUTES` | `5` | Background price refresh interval |
+| `TZ` | `UTC` | Container timezone |
+| `TRUST_PROXY` | `true` | Enables operation behind a trusted reverse proxy |
+| `PORT` | `3000` | Host port used by `compose.yml` |
+| `CRYPTOLYST_IMAGE` | `1030283726/cryptolyst:latest` | Image used by `compose.yml` |
+
+The application settings page can change the price provider, refresh interval, timezone, theme, decimal precision, and other display preferences.
+
+## Local Development
+
+Requirements: Node.js 24 and npm.
+
+```bash
+npm install
+cp .env.example .env
 npm run db:generate
 npm run db:init
 npm run seed
 npm run dev
 ```
 
-Open `http://localhost:3000`.
+Open [http://localhost:3000](http://localhost:3000).
 
-Create a password hash:
-
-```bash
-npm run hash-password -- "your-password"
-```
-
-The command prints a complete `APP_PASSWORD_HASH` line that is safe to paste into
-Next.js `.env`. The backslashes are required because Next.js expands unescaped
-`$` characters in environment values.
-
-Set `.env` using the generated line:
-
-```env
-APP_PASSWORD_HASH='\$2b\$12\$...'
-SESSION_SECRET=<at-least-32-random-characters>
-DATABASE_URL=file:./dev.db
-PRICE_PROVIDER=coingecko
-PRICE_REFRESH_INTERVAL_MINUTES=5
-TZ=Asia/Hong_Kong
-```
-
-Do not commit `.env`.
-
-## Database
-
-The Prisma schema is in `prisma/schema.prisma`. In this environment, Prisma schema-engine failed with an empty engine error, so the app includes an idempotent SQLite initializer:
-
-```bash
-npm run db:init
-```
-
-This creates the same tables and indexes defined by the Prisma models and is used by Docker startup. If Prisma migration works on your host, you can switch back to:
-
-```bash
-npm run db:migrate
-```
-
-## Tests
+Useful commands:
 
 ```bash
 npm run lint
@@ -71,108 +156,91 @@ npm test
 npm run build
 ```
 
-## Docker
+## Data and Backups
 
-Build and run:
+Cryptolyst stores application data in SQLite. The Docker image uses `/data/cryptolyst.db`, persisted by the `cryptolyst-data` named volume.
 
-```bash
-docker compose up -d --build
-```
+The recommended portable backup workflow is available in **Import / Export**:
 
-The app listens on host port `8088` and stores SQLite data under `/data/cryptolyst.db` inside the container.
+1. Download a complete JSON backup.
+2. Store the file outside the container.
+3. Import it into a new, empty Cryptolyst database when restoration is required.
 
-`compose.yml` maps Synology storage:
+JSON backups contain assets, buy lots, sales, profit targets, price history, and application settings. JSON restore refuses to write into a database that already contains portfolio data.
 
-```yaml
-volumes:
-  - /volume2/docker/cryptolyst/data:/data
-```
+## CSV Import and Export
 
-Create the folder on Synology:
-
-```bash
-mkdir -p /volume2/docker/cryptolyst/data
-chown -R 10001:10001 /volume2/docker/cryptolyst/data
-```
-
-## Synology Reverse Proxy
-
-Recommended external URL:
+CSV imports support `BUY` and `SELL` rows. Required columns are:
 
 ```text
-https://cryptolyst.example.com
+type,asset,date,price,quantity
 ```
 
-Synology Reverse Proxy:
+Optional columns include:
 
-- Source protocol: HTTPS
-- Source hostname: `cryptolyst.example.com`
-- Source port: `443`
-- Destination protocol: HTTP
-- Destination hostname: NAS IP or `localhost`
-- Destination port: `8088`
+```text
+fee,feeCurrency,exchange,account,note,buyLotReference
+```
 
-Production cookies are `Secure`, `HttpOnly`, and `SameSite=Lax`.
+`SELL` rows must provide the target buy-lot ID in `buyLotReference`.
 
-## Backup
+## Legacy Spreadsheet Import
 
-Preferred SQLite backup while the app may be writing:
+Preview an existing workbook without changing the database:
 
 ```bash
-sqlite3 /volume2/docker/cryptolyst/data/cryptolyst.db \
-  ".backup '/volume2/docker/cryptolyst/backups/cryptolyst-$(date +%F-%H%M).db'"
+npm run import:legacy -- "/path/to/crypto-trades.xlsx"
 ```
 
-Simple offline copy:
+Commit the validated import:
 
 ```bash
-cp /volume2/docker/cryptolyst/data/cryptolyst.db \
-   /volume2/docker/cryptolyst/backups/cryptolyst-$(date +%F-%H%M).db
+npx tsx scripts/import-legacy-xlsx.ts "/path/to/crypto-trades.xlsx" --commit
 ```
 
-JSON export is available at `/import-export`.
+Use `--replace-existing` only when intentionally rebuilding the database from the workbook.
 
-## Legacy Excel Import
+## Price Updates
 
-Dry-run:
+The server starts its price scheduler automatically. It performs the first update shortly after startup and then uses the configured refresh interval. Failed provider requests retain the last valid price.
 
-```bash
-npm run import:legacy -- "C:\Users\EZ24\Nextcloud\Documents\加密貨幣交易記錄 2.0.xlsx"
-```
+- CoinGecko uses each asset's CoinGecko ID.
+- Binance uses each asset's Binance symbol.
+- Manual prices remain available from the price-management page.
 
-Commit recognized asset shell records:
-
-```bash
-npm run import:legacy -- "C:\Users\EZ24\Nextcloud\Documents\加密貨幣交易記錄 2.0.xlsx" --commit
-```
-
-The importer currently reports workbook/sheet shape and creates asset shell records only. It does not trust Excel-calculated P&L. Lot/sale column mapping should be reviewed before committing historical trade rows.
-
-## Price APIs
-
-- CoinGecko uses `coingeckoId` and `/coins/markets` for price, 24-hour change, and coin images.
-- Binance uses public ticker API and `binanceSymbol`, no API key.
-- Failed price updates keep the last valid price and log the error.
-
-A manually configured icon URL always takes precedence. To fill missing icons for
-existing assets from CoinGecko:
+To populate missing CoinGecko icons:
 
 ```bash
 npm run sync-icons
 ```
 
-This sends the configured CoinGecko IDs to CoinGecko and stores the returned image URLs.
+## Architecture
 
-## Security Notes
+- Next.js App Router and React Server Components
+- TypeScript and Server Actions
+- Tailwind CSS, Lucide Icons, and Recharts
+- Prisma ORM with SQLite
+- `decimal.js` for financial calculations
+- bcrypt password verification and signed HttpOnly sessions
 
-- No exchange API keys or private keys are used.
-- All mutations require a session.
-- Passwords are compared against `APP_PASSWORD_HASH`; plaintext passwords are never stored.
-- Financial calculations are recomputed on the server and use Decimal arithmetic.
+## Continuous Delivery
 
-## Known Gaps
+The GitHub Actions workflow validates every relevant source change with type checking, linting, and tests, then publishes the Docker image to Docker Hub.
 
-- Edit forms are not yet exposed for all records; create/delete flows are implemented.
-- CSV import preview/commit UI is not implemented yet.
-- Excel importer is a dry-run/shell importer and needs workbook-specific column mapping before full migration.
-- Background interval price refresh is represented by manual/protected update; a long-running interval can be added in production if desired.
+Published tags include:
+
+- `latest` for the default branch
+- `sha-<commit>` for each build
+- Semantic-version tags for Git tags such as `v1.2.0`
+
+## Security
+
+- Keep `.env` outside version control.
+- Use a unique password and a randomly generated session secret.
+- Cryptolyst does not require exchange API keys or private keys.
+- All mutations require an authenticated session.
+- Financial calculations run on the server using decimal arithmetic.
+
+## License
+
+No license has been published for this repository. All rights are reserved by the repository owner.
