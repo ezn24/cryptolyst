@@ -243,4 +243,4 @@ Published tags include:
 
 ## License
 
-No license has been published for this repository. All rights are reserved by the repository owner.
+This project is licensed under the GNU General Public License v3.0 (GPL-3.0). See LICENSE.
