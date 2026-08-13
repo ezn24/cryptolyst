@@ -27,7 +27,17 @@ const saleSchema = z.object({
   id: z.string().min(1), buyLotId: z.string().min(1), date: requiredDate,
   price: decimalValue, quantity: decimalValue, fee: decimalValue.default("0"),
   feeCurrency: z.string().default("USDT"), exchange: nullableText, account: nullableText,
-  note: nullableText, createdAt: requiredDate.optional(), updatedAt: requiredDate.optional(),
+  note: nullableText, conversionId: nullableText,
+  createdAt: requiredDate.optional(), updatedAt: requiredDate.optional(),
+});
+
+const conversionSchema = z.object({
+  id: z.string().min(1), sourceAssetId: z.string().min(1), targetAssetId: z.string().min(1),
+  destinationLotId: z.string().min(1), date: requiredDate,
+  sourceQuantity: decimalValue, targetQuantity: decimalValue, transferredCost: decimalValue,
+  fee: decimalValue.default("0"), feeCurrency: z.string().default("USDT"),
+  exchange: nullableText, account: nullableText, note: nullableText,
+  createdAt: requiredDate.optional(), updatedAt: requiredDate.optional(),
 });
 
 const targetSchema = z.object({
@@ -53,7 +63,8 @@ const settingSchema = z.object({
 export const jsonBackupSchema = z.object({
   formatVersion: z.number().int().positive().optional(), exportedAt: requiredDate.optional(),
   assets: z.array(assetSchema), buyLots: z.array(buyLotSchema), sales: z.array(saleSchema),
-  targets: z.array(targetSchema), priceHistory: z.array(priceHistorySchema).default([]),
+  targets: z.array(targetSchema), conversions: z.array(conversionSchema).default([]),
+  priceHistory: z.array(priceHistorySchema).default([]),
   settings: z.array(settingSchema),
 });
 

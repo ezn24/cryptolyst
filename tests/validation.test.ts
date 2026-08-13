@@ -1,8 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { calculateProfitTarget } from "@/lib/calculations/portfolio";
-import { assetSchema, buyLotSchema, saleSchema, targetSchema } from "@/lib/validation/schemas";
+import { assetConversionSchema, assetSchema, buyLotSchema, saleSchema, targetSchema } from "@/lib/validation/schemas";
 
 describe("transaction validation", () => {
+  it("validates asset conversions and rejects identical assets", () => {
+    const input = {
+      sourceAssetId: "eth",
+      targetAssetId: "wbeth",
+      date: "2026-08-13",
+      targetQuantity: "1.23456789",
+      fee: "0",
+      feeCurrency: "USDT",
+    };
+    expect(assetConversionSchema.parse(input).targetQuantity).toBe("1.23456789");
+    expect(() => assetConversionSchema.parse({ ...input, targetAssetId: "eth" })).toThrow();
+  });
   it("normalizes valid asset colors and rejects malformed values", () => {
     const input = {
       symbol: "btc",

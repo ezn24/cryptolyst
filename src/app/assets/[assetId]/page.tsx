@@ -5,6 +5,7 @@ import { AppShell } from "@/components/app-shell";
 import { AssetCharts } from "@/components/assets/asset-charts";
 import {
   BuyLotEditor,
+  AssetConversionEditor,
   DeleteEntityButton,
   SaleEditor,
   TargetEditor,
@@ -50,6 +51,14 @@ export async function AssetLedger({ assetId }: { assetId: string }) {
     orderBy: [{ sortOrder: "asc" }, { symbol: "asc" }],
     select: { id: true, symbol: true, name: true },
   });
+  const conversions = await prisma.assetConversion.findMany({
+    where: { OR: [{ sourceAssetId: asset.id }, { targetAssetId: asset.id }] },
+    include: {
+      sourceAsset: { select: { id: true, symbol: true } },
+      targetAsset: { select: { id: true, symbol: true } },
+    },
+    orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+  });
   const chartData = lots.map((lot, index) => ({
     name: `批次 ${index + 1}`,
     bought: lot.quantity.toNumber(),
@@ -79,6 +88,13 @@ export async function AssetLedger({ assetId }: { assetId: string }) {
             <span className="hidden sm:inline">管理幣種</span>
           </Link>
           <BuyLotEditor assetId={asset.id} symbol={asset.symbol} />
+          <AssetConversionEditor
+            sourceAssetId={asset.id}
+            sourceSymbol={asset.symbol}
+            sourceQuantity={metrics.totalRemainingQuantity.toString()}
+            sourceCost={metrics.totalRemainingCost.toString()}
+            assets={assetOptions.filter((option) => option.id !== asset.id)}
+          />
         </div>
       }
     >
@@ -122,6 +138,49 @@ export async function AssetLedger({ assetId }: { assetId: string }) {
 
       <AssetCharts data={chartData} symbol={asset.symbol} />
 
+      {conversions.length ? (
+        <Panel className="mt-5">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="font-semibold">資產轉換紀錄</h2>
+              <p className="mt-1 text-xs text-zinc-500">成本轉移不計為一般交易損益</p>
+            </div>
+            <span className="text-xs text-zinc-500">{conversions.length} 筆</span>
+          </div>
+          <div className="grid gap-2">
+            {conversions.map((conversion) => {
+              const outgoing = conversion.sourceAssetId === asset.id;
+              const other = outgoing ? conversion.targetAsset : conversion.sourceAsset;
+              const targetCost = D(conversion.transferredCost).plus(conversion.fee);
+              const targetUnitCost = targetCost.div(conversion.targetQuantity);
+              return (
+                <div key={conversion.id} className="grid gap-2 rounded-md border border-white/10 p-3 text-sm md:grid-cols-[1fr_auto] md:items-center">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={outgoing ? "rounded-sm bg-sky-400/10 px-2 py-0.5 text-xs text-sky-300" : "rounded-sm bg-emerald-400/10 px-2 py-0.5 text-xs text-emerald-300"}>
+                        {outgoing ? "轉出" : "轉入"}
+                      </span>
+                      <span className="font-semibold">
+                        {decimalString(conversion.sourceQuantity)} {conversion.sourceAsset.symbol} → {decimalString(conversion.targetQuantity)} {conversion.targetAsset.symbol}
+                      </span>
+                      <Link href={`/assets/${other.id}`} className="text-xs text-sky-300 hover:underline">查看 {other.symbol}</Link>
+                    </div>
+                    <div className="mt-1 text-xs text-zinc-500">
+                      {conversion.date.toISOString().slice(0, 10)} · {conversion.exchange || "未填交易所"} · {conversion.account || "未填帳戶"}
+                    </div>
+                    {conversion.note ? <div className="mt-1 text-xs text-zinc-400">{conversion.note}</div> : null}
+                  </div>
+                  <div className="text-left md:text-right">
+                    <div>{money(conversion.transferredCost)} 成本轉移</div>
+                    <div className="text-xs text-zinc-500">目標單位成本 {money(targetUnitCost)}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Panel>
+      ) : null}
+
       <div className="mt-5 grid gap-4">
         {lots.length ? (
           lots.map((lot, index) => (
@@ -164,6 +223,10 @@ export async function AssetLedger({ assetId }: { assetId: string }) {
                   </div>
 
                   <div className="mt-4 flex flex-wrap gap-2 border-t border-white/10 pt-4">
+                    {lot.destinationConversion || lot.sales.some((sale) => sale.conversionId) ? (
+                      <span className="rounded-md bg-sky-400/10 px-3 py-2 text-sm text-sky-300">資產轉換關聯批次</span>
+                    ) : (
+                      <>
                     <BuyLotEditor
                       assetId={asset.id}
                       symbol={asset.symbol}
@@ -191,6 +254,8 @@ export async function AssetLedger({ assetId }: { assetId: string }) {
                           : "此操作會永久刪除買入批次與其止盈目標。"
                       }
                     />
+                      </>
+                    )}
                   </div>
 
                   <div className="mt-5 grid gap-5 xl:grid-cols-2">
@@ -227,6 +292,10 @@ export async function AssetLedger({ assetId }: { assetId: string }) {
                                   <td>{sale.exchange || "-"} / {sale.account || "-"}</td>
                                   <td>
                                     <div className="flex justify-end">
+                                      {sale.conversionId ? (
+                                        <span className="rounded-sm bg-sky-400/10 px-2 py-1 text-sky-300">轉換產生</span>
+                                      ) : (
+                                        <>
                                       <SaleEditor
                                         compact
                                         buyLotId={lot.id}
@@ -253,6 +322,8 @@ export async function AssetLedger({ assetId }: { assetId: string }) {
                                         label="刪除賣出紀錄"
                                         description="刪除後，批次剩餘數量、成本與已實現損益會立即重新計算。"
                                       />
+                                        </>
+                                      )}
                                     </div>
                                   </td>
                                 </tr>

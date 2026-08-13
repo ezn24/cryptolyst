@@ -20,6 +20,7 @@ import { asBool, formText } from "@/lib/utils";
 import { D } from "@/lib/decimal";
 import { buyLotSchema, saleSchema, settingSchema } from "@/lib/validation/schemas";
 import { parseJsonBackup } from "@/lib/import/json-backup";
+import { createAssetConversion } from "@/lib/services/conversion-service";
 
 export type ActionResult = {
   ok: boolean;
@@ -435,6 +436,28 @@ export async function importTransactionsCsvAction(formData: FormData): Promise<A
   }
 }
 
+export async function createAssetConversionAction(formData: FormData): Promise<ActionResult> {
+  try {
+    await requireSession();
+    const result = await createAssetConversion({
+      sourceAssetId: formText(formData, "sourceAssetId"),
+      targetAssetId: formText(formData, "targetAssetId"),
+      date: formText(formData, "date"),
+      targetQuantity: formText(formData, "targetQuantity"),
+      fee: formText(formData, "fee") ?? "0",
+      feeCurrency: formText(formData, "feeCurrency") ?? "USDT",
+      exchange: formText(formData, "exchange") ?? "",
+      account: formText(formData, "account") ?? "",
+      note: formText(formData, "note") ?? "",
+    });
+    refreshAsset(result.sourceAssetId);
+    refreshAsset(result.targetAssetId);
+    return success(`${result.sourceSymbol} 已全部轉換為 ${result.targetSymbol}`);
+  } catch (error) {
+    return failure(error);
+  }
+}
+
 export async function importJsonBackupAction(formData: FormData): Promise<ActionResult> {
   try {
     await requireSession();
@@ -453,6 +476,7 @@ export async function importJsonBackupAction(formData: FormData): Promise<Action
 
       if (backup.assets.length) await tx.asset.createMany({ data: backup.assets });
       if (backup.buyLots.length) await tx.buyLot.createMany({ data: backup.buyLots });
+      if (backup.conversions.length) await tx.assetConversion.createMany({ data: backup.conversions });
       if (backup.sales.length) await tx.sale.createMany({ data: backup.sales });
       if (backup.targets.length) await tx.profitTarget.createMany({ data: backup.targets });
       if (backup.priceHistory.length) await tx.priceHistory.createMany({ data: backup.priceHistory });
@@ -465,7 +489,8 @@ export async function importJsonBackupAction(formData: FormData): Promise<Action
     revalidatePath("/", "layout");
     return success(
       `JSON 還原完成：${backup.assets.length} 個資產、${backup.buyLots.length} 個批次、` +
-      `${backup.sales.length} 筆賣出、${backup.targets.length} 個目標、${backup.priceHistory.length} 筆價格歷史`,
+      `${backup.sales.length} 筆賣出、${backup.targets.length} 個目標、${backup.conversions.length} 筆轉換、` +
+      `${backup.priceHistory.length} 筆價格歷史`,
     );
   } catch (error) {
     return failure(error);

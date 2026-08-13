@@ -6,7 +6,7 @@ import {
 } from "@/lib/calculations/portfolio";
 
 export async function getPortfolioData() {
-  const [assets, settings] = await Promise.all([
+  const [assets, settings, conversionCost] = await Promise.all([
     prisma.asset.findMany({
       orderBy: [{ sortOrder: "asc" }, { symbol: "asc" }],
       include: {
@@ -18,6 +18,7 @@ export async function getPortfolioData() {
       },
     }),
     getSettings(),
+    prisma.assetConversion.aggregate({ _sum: { transferredCost: true } }),
   ]);
 
   const summaries = assets.map((asset) => {
@@ -33,6 +34,7 @@ export async function getPortfolioData() {
     summaries.map((summary) => ({
       lots: summary.lots.map((lot) => ({ ...lot, currentPrice: summary.asset.currentPrice })),
     })),
+    conversionCost._sum.transferredCost ?? 0,
   );
 
   return { assets: summaries, portfolio, settings };
@@ -44,7 +46,11 @@ export async function getAssetDetail(assetId: string) {
     include: {
       buyLots: {
         orderBy: [{ date: "desc" }, { createdAt: "asc" }],
-        include: { sales: { orderBy: { date: "asc" } }, targets: { orderBy: { targetPercent: "asc" } } },
+        include: {
+          sales: { orderBy: { date: "asc" } },
+          targets: { orderBy: { targetPercent: "asc" } },
+          destinationConversion: { select: { id: true } },
+        },
       },
       priceHistory: { orderBy: { timestamp: "asc" }, take: 500 },
     },

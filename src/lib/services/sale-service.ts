@@ -42,6 +42,8 @@ export async function createSale(input: unknown) {
 
 export async function updateSale(id: string, input: unknown) {
   const data = saleSchema.parse(input);
+  const existing = await prisma.sale.findUnique({ where: { id }, select: { conversionId: true } });
+  if (existing?.conversionId) throw new Error("資產轉換產生的賣出紀錄不可單獨編輯");
   const sale = await prisma.$transaction(async (tx) => {
     await assertSaleQuantity(tx as typeof prisma, data.buyLotId, data.quantity, id);
     return tx.sale.update({
@@ -64,8 +66,9 @@ export async function updateSale(id: string, input: unknown) {
 }
 
 export async function deleteSale(id: string) {
+  const existing = await prisma.sale.findUnique({ where: { id }, select: { conversionId: true } });
+  if (existing?.conversionId) throw new Error("資產轉換產生的賣出紀錄不可單獨刪除");
   const sale = await prisma.$transaction((tx) => tx.sale.delete({ where: { id } }));
   revalidatePath("/");
   return sale;
 }
-

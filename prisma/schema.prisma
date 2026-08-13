@@ -8,65 +8,96 @@ datasource db {
 }
 
 model Asset {
-  id             String         @id @default(cuid())
-  symbol         String         @unique
-  name           String
-  coingeckoId    String?
-  binanceSymbol  String?
-  priceSource    String         @default("coingecko")
-  currentPrice   Decimal        @default(0)
-  priceCurrency  String         @default("USDT")
-  priceUpdatedAt DateTime?
-  priceChange24h Decimal        @default(0)
-  iconUrl        String?
-  color          String         @default("#64748B")
-  isActive       Boolean        @default(true)
-  sortOrder      Int            @default(0)
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  buyLots        BuyLot[]
-  priceHistory   PriceHistory[]
+  id                  String            @id @default(cuid())
+  symbol              String            @unique
+  name                String
+  coingeckoId         String?
+  binanceSymbol       String?
+  priceSource         String            @default("coingecko")
+  currentPrice        Decimal           @default(0)
+  priceCurrency       String            @default("USDT")
+  priceUpdatedAt      DateTime?
+  priceChange24h      Decimal           @default(0)
+  iconUrl             String?
+  color               String            @default("#64748B")
+  isActive            Boolean           @default(true)
+  sortOrder           Int               @default(0)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  buyLots             BuyLot[]
+  priceHistory        PriceHistory[]
+  outgoingConversions AssetConversion[] @relation("ConversionSourceAsset")
+  incomingConversions AssetConversion[] @relation("ConversionTargetAsset")
 }
 
 model BuyLot {
-  id          String         @id @default(cuid())
-  assetId     String
-  date        DateTime
-  price       Decimal
-  quantity    Decimal
-  fee         Decimal        @default(0)
-  feeCurrency String         @default("USDT")
-  exchange    String?
-  account     String?
-  note        String?
-  isIncluded  Boolean        @default(true)
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  asset       Asset          @relation(fields: [assetId], references: [id], onDelete: Restrict)
-  sales       Sale[]
-  targets     ProfitTarget[]
+  id                    String           @id @default(cuid())
+  assetId               String
+  date                  DateTime
+  price                 Decimal
+  quantity              Decimal
+  fee                   Decimal          @default(0)
+  feeCurrency           String           @default("USDT")
+  exchange              String?
+  account               String?
+  note                  String?
+  isIncluded            Boolean          @default(true)
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  asset                 Asset            @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  sales                 Sale[]
+  targets               ProfitTarget[]
+  destinationConversion AssetConversion? @relation("ConversionDestinationLot")
 
   @@index([assetId])
   @@index([date])
 }
 
 model Sale {
-  id          String   @id @default(cuid())
-  buyLotId    String
-  date        DateTime
-  price       Decimal
-  quantity    Decimal
-  fee         Decimal  @default(0)
-  feeCurrency String   @default("USDT")
-  exchange    String?
-  account     String?
-  note        String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  buyLot      BuyLot   @relation(fields: [buyLotId], references: [id], onDelete: Cascade)
+  id           String           @id @default(cuid())
+  buyLotId     String
+  date         DateTime
+  price        Decimal
+  quantity     Decimal
+  fee          Decimal          @default(0)
+  feeCurrency  String           @default("USDT")
+  exchange     String?
+  account      String?
+  note         String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  conversionId String?
+  buyLot       BuyLot           @relation(fields: [buyLotId], references: [id], onDelete: Cascade)
+  conversion   AssetConversion? @relation(fields: [conversionId], references: [id], onDelete: SetNull)
 
   @@index([buyLotId])
   @@index([date])
+  @@index([conversionId])
+}
+
+model AssetConversion {
+  id               String   @id @default(cuid())
+  sourceAssetId    String
+  targetAssetId    String
+  destinationLotId String   @unique
+  date             DateTime
+  sourceQuantity   Decimal
+  targetQuantity   Decimal
+  transferredCost  Decimal
+  fee              Decimal  @default(0)
+  feeCurrency      String   @default("USDT")
+  exchange         String?
+  account          String?
+  note             String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  sourceAsset      Asset    @relation("ConversionSourceAsset", fields: [sourceAssetId], references: [id], onDelete: Restrict)
+  targetAsset      Asset    @relation("ConversionTargetAsset", fields: [targetAssetId], references: [id], onDelete: Restrict)
+  destinationLot   BuyLot   @relation("ConversionDestinationLot", fields: [destinationLotId], references: [id], onDelete: Restrict)
+  sourceSales      Sale[]
+
+  @@index([sourceAssetId, date])
+  @@index([targetAssetId, date])
 }
 
 model ProfitTarget {
@@ -95,8 +126,8 @@ model PriceHistory {
   timestamp DateTime @default(now())
   asset     Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
 
-  @@index([assetId, timestamp])
   @@unique([assetId, source, timestamp])
+  @@index([assetId, timestamp])
 }
 
 model AppSetting {

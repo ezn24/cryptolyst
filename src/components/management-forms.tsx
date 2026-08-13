@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { useMemo, useState, useTransition, type FormEvent, type ReactNode } from "react";
 import {
   AlertTriangle,
+  ArrowRightLeft,
   Check,
   LoaderCircle,
   Pencil,
@@ -15,6 +16,7 @@ import {
 } from "lucide-react";
 import {
   createAssetAction,
+  createAssetConversionAction,
   createBuyLotAction,
   createSaleAction,
   createTargetAction,
@@ -277,6 +279,91 @@ export type BuyLotFormValue = {
   note: string;
   isIncluded: boolean;
 };
+
+export function AssetConversionEditor({
+  sourceAssetId,
+  sourceSymbol,
+  sourceQuantity,
+  sourceCost,
+  assets,
+}: {
+  sourceAssetId: string;
+  sourceSymbol: string;
+  sourceQuantity: string;
+  sourceCost: string;
+  assets: { id: string; symbol: string; name: string }[];
+}) {
+  const [open, setOpen] = useState(false);
+  const [targetQuantity, setTargetQuantity] = useState("");
+  const [fee, setFee] = useState("0");
+  const today = new Date().toISOString().slice(0, 10);
+  const quantity = Number(targetQuantity);
+  const sourceQty = Number(sourceQuantity);
+  const totalCost = Number(sourceCost) + (Number(fee) || 0);
+  const validPreview = quantity > 0 && Number.isFinite(quantity);
+
+  return <>
+    <Button type="button" onClick={() => setOpen(true)} disabled={!assets.length || !(sourceQty > 0)} className="bg-sky-500 hover:bg-sky-400">
+      <ArrowRightLeft className="h-4 w-4" />資產轉換
+    </Button>
+    <Modal
+      open={open}
+      onClose={() => setOpen(false)}
+      title={`轉換全部 ${sourceSymbol} 持倉`}
+      description="來源批次會按原成本關閉，剩餘成本完整轉移至新的目標資產批次，不產生轉換損益。"
+    >
+      <MutationForm action={createAssetConversionAction} onSuccess={() => setOpen(false)} submitLabel="確認資產轉換">
+        <input type="hidden" name="sourceAssetId" value={sourceAssetId} />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Label>
+            來源資產
+            <Input value={`${sourceSymbol} · 全部 ${sourceQuantity}`} disabled />
+          </Label>
+          <Label>
+            目標資產
+            <Select name="targetAssetId" required defaultValue="">
+              <option value="" disabled>選擇目標資產</option>
+              {assets.map((asset) => <option key={asset.id} value={asset.id}>{asset.symbol} · {asset.name}</option>)}
+            </Select>
+          </Label>
+          <Label>
+            轉換日期
+            <Input name="date" type="date" defaultValue={today} required />
+          </Label>
+          <Label>
+            實際收到數量
+            <Input name="targetQuantity" inputMode="decimal" value={targetQuantity} onChange={(event) => setTargetQuantity(event.target.value)} placeholder="以成交紀錄為準" required />
+          </Label>
+          <Label>
+            額外成本／手續費
+            <Input name="fee" inputMode="decimal" value={fee} onChange={(event) => setFee(event.target.value)} required />
+          </Label>
+          <Label>
+            手續費幣別
+            <Input name="feeCurrency" defaultValue="USDT" required />
+          </Label>
+          <Label>
+            交易所
+            <Input name="exchange" placeholder="Binance" />
+          </Label>
+          <Label>
+            帳戶
+            <Input name="account" placeholder="現貨主帳戶" />
+          </Label>
+          <Label className="sm:col-span-2">
+            備註
+            <Textarea name="note" placeholder="例如：ETH 兌換為 WBETH" />
+          </Label>
+        </div>
+        <div className="grid gap-2 rounded-md border border-white/10 bg-black/20 p-3 text-sm sm:grid-cols-3">
+          <div><span className="text-zinc-500">轉移成本</span><div className="font-semibold">{Number(sourceCost).toFixed(2)} USDT</div></div>
+          <div><span className="text-zinc-500">換算比率</span><div className="font-semibold">{validPreview ? `1 目標資產 = ${(sourceQty / quantity).toFixed(8)} ${sourceSymbol}` : "-"}</div></div>
+          <div><span className="text-zinc-500">目標單位成本</span><div className="font-semibold">{validPreview ? `${(totalCost / quantity).toFixed(2)} USDT` : "-"}</div></div>
+        </div>
+      </MutationForm>
+    </Modal>
+  </>;
+}
 
 export function BuyLotEditor({
   assetId,

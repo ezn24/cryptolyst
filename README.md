@@ -11,6 +11,7 @@ Cryptolyst is a self-hosted cryptocurrency trade journal and portfolio analytics
 
 - Asset-grouped investment ledgers with independent charts
 - Buy lots, unlimited partial sales, fees, exchanges, accounts, and notes
+- Asset-to-asset conversions with cost-basis transfer and linked source/target records
 - Remaining cost, average entry, break-even status, realized and unrealized P&L
 - Per-lot profit targets and target-price tracking
 - CoinGecko and Binance public price providers

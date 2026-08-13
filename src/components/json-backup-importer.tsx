@@ -16,6 +16,7 @@ function previewJson(text: string) {
       買入批次: (data.buyLots as unknown[]).length,
       賣出紀錄: (data.sales as unknown[]).length,
       止盈目標: (data.targets as unknown[]).length,
+      資產轉換: Array.isArray(data.conversions) ? data.conversions.length : 0,
       價格歷史: Array.isArray(data.priceHistory) ? data.priceHistory.length : 0,
     } };
   } catch {

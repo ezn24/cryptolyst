@@ -73,6 +73,21 @@ export const saleSchema = z.object({
   note: z.string().trim().optional().or(z.literal("")),
 });
 
+export const assetConversionSchema = z.object({
+  sourceAssetId: z.string().min(1, "來源資產不存在"),
+  targetAssetId: z.string().min(1, "目標資產不存在"),
+  date: z.coerce.date({ error: "日期格式不正確" }),
+  targetQuantity: positiveDecimal,
+  fee: nonNegativeDecimal.default("0"),
+  feeCurrency: z.string().trim().min(1).default("USDT"),
+  exchange: z.string().trim().optional().or(z.literal("")),
+  account: z.string().trim().optional().or(z.literal("")),
+  note: z.string().trim().optional().or(z.literal("")),
+}).refine((value) => value.sourceAssetId !== value.targetAssetId, {
+  message: "來源與目標資產不可相同",
+  path: ["targetAssetId"],
+});
+
 export const targetSchema = z
   .object({
     buyLotId: z.string().min(1, "買入批次不存在"),

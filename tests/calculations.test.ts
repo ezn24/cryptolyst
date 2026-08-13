@@ -1,5 +1,5 @@
 ﻿import { describe, expect, it } from "vitest";
-import { calculateBuyLotMetrics } from "@/lib/calculations/portfolio";
+import { calculateBuyLotMetrics, calculatePortfolioMetrics } from "@/lib/calculations/portfolio";
 
 describe("calculateBuyLotMetrics", () => {
   it("calculates unsold lots", () => {
@@ -56,6 +56,19 @@ describe("calculateBuyLotMetrics", () => {
     expect(metrics.unrealizedProfit.toString()).toBe("0");
     expect(metrics.costOfSoldQuantity.toString()).toBe("143.3991");
     expect(metrics.status).toBe("closed");
+  });
+});
+
+describe("calculatePortfolioMetrics", () => {
+  it("does not count transferred cost as a second external investment", () => {
+    const metrics = calculatePortfolioMetrics([
+      { lots: [{ price: "1000", quantity: "1", sales: [{ price: "1000", quantity: "1" }] }] },
+      { lots: [{ price: "1000", quantity: "1", currentPrice: "1100" }] },
+    ], "1000");
+
+    expect(metrics.totalOriginalCost.toString()).toBe("1000");
+    expect(metrics.totalProfit.toString()).toBe("100");
+    expect(metrics.portfolioReturnPercent.toString()).toBe("10");
   });
 });
 

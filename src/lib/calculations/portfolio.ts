@@ -106,9 +106,13 @@ export function calculateAssetMetrics(lots: BuyLotInput[]) {
   };
 }
 
-export function calculatePortfolioMetrics(assets: { lots: BuyLotInput[] }[]) {
+export function calculatePortfolioMetrics(
+  assets: { lots: BuyLotInput[] }[],
+  transferredCost: Decimal.Value = 0,
+) {
   const assetMetrics = assets.map((asset) => calculateAssetMetrics(asset.lots));
-  const totalOriginalCost = assetMetrics.reduce((sum, asset) => sum.plus(asset.totalOriginalCost), D(0));
+  const grossOriginalCost = assetMetrics.reduce((sum, asset) => sum.plus(asset.totalOriginalCost), D(0));
+  const totalOriginalCost = Decimal.max(grossOriginalCost.minus(D(transferredCost)), 0);
   const totalRemainingCost = assetMetrics.reduce((sum, asset) => sum.plus(asset.totalRemainingCost), D(0));
   const currentMarketValue = assetMetrics.reduce((sum, asset) => sum.plus(asset.currentMarketValue), D(0));
   const realizedProfit = assetMetrics.reduce((sum, asset) => sum.plus(asset.realizedProfit), D(0));

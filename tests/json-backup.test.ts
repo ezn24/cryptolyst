@@ -14,6 +14,7 @@ describe("JSON backup parsing", () => {
   it("accepts an older backup without price history and supplies defaults", () => {
     const parsed = parseJsonBackup(JSON.stringify(minimalBackup));
     expect(parsed.priceHistory).toEqual([]);
+    expect(parsed.conversions).toEqual([]);
     expect(parsed.assets[0].currentPrice).toBe("0");
     expect(parsed.settings[0].priceRefreshInterval).toBe(5);
   });

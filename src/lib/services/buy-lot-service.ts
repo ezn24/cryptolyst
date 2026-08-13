@@ -30,8 +30,14 @@ export async function createBuyLot(input: unknown) {
 
 export async function updateBuyLot(id: string, input: unknown) {
   const data = buyLotSchema.parse(input);
-  const existing = await prisma.buyLot.findUnique({ where: { id }, include: { sales: true } });
+  const existing = await prisma.buyLot.findUnique({
+    where: { id },
+    include: { sales: true, destinationConversion: { select: { id: true } } },
+  });
   if (!existing) throw new Error("買入批次不存在");
+  if (existing.destinationConversion || existing.sales.some((sale) => sale.conversionId)) {
+    throw new Error("資產轉換關聯的批次不可單獨編輯");
+  }
   const sold = existing.sales.reduce((sum, sale) => sum.plus(D(sale.quantity)), D(0));
   if (sold.gt(D(data.quantity))) throw new Error("買入數量不可小於已賣出數量");
 
@@ -57,8 +63,9 @@ export async function updateBuyLot(id: string, input: unknown) {
 }
 
 export async function deleteBuyLot(id: string) {
+  const conversion = await prisma.assetConversion.findUnique({ where: { destinationLotId: id } });
+  if (conversion) throw new Error("資產轉換建立的目標批次不可單獨刪除");
   const saleCount = await prisma.sale.count({ where: { buyLotId: id } });
   if (saleCount > 0) throw new Error("此批次已有賣出紀錄，請先刪除 Sale");
   return prisma.buyLot.delete({ where: { id } });
 }
-

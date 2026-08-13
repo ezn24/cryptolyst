@@ -50,7 +50,28 @@ const statements = [
     "note" TEXT,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "conversionId" TEXT,
     CONSTRAINT "Sale_buyLotId_fkey" FOREIGN KEY ("buyLotId") REFERENCES "BuyLot" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+  )`,
+  `CREATE TABLE IF NOT EXISTS "AssetConversion" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "sourceAssetId" TEXT NOT NULL,
+    "targetAssetId" TEXT NOT NULL,
+    "destinationLotId" TEXT NOT NULL UNIQUE,
+    "date" DATETIME NOT NULL,
+    "sourceQuantity" DECIMAL NOT NULL,
+    "targetQuantity" DECIMAL NOT NULL,
+    "transferredCost" DECIMAL NOT NULL,
+    "fee" DECIMAL NOT NULL DEFAULT 0,
+    "feeCurrency" TEXT NOT NULL DEFAULT 'USDT',
+    "exchange" TEXT,
+    "account" TEXT,
+    "note" TEXT,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "AssetConversion_sourceAssetId_fkey" FOREIGN KEY ("sourceAssetId") REFERENCES "Asset" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT "AssetConversion_targetAssetId_fkey" FOREIGN KEY ("targetAssetId") REFERENCES "Asset" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT "AssetConversion_destinationLotId_fkey" FOREIGN KEY ("destinationLotId") REFERENCES "BuyLot" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
   )`,
   `CREATE TABLE IF NOT EXISTS "ProfitTarget" (
     "id" TEXT NOT NULL PRIMARY KEY,
@@ -92,6 +113,8 @@ const statements = [
   `CREATE INDEX IF NOT EXISTS "BuyLot_date_idx" ON "BuyLot"("date")`,
   `CREATE INDEX IF NOT EXISTS "Sale_buyLotId_idx" ON "Sale"("buyLotId")`,
   `CREATE INDEX IF NOT EXISTS "Sale_date_idx" ON "Sale"("date")`,
+  `CREATE INDEX IF NOT EXISTS "AssetConversion_sourceAssetId_date_idx" ON "AssetConversion"("sourceAssetId", "date")`,
+  `CREATE INDEX IF NOT EXISTS "AssetConversion_targetAssetId_date_idx" ON "AssetConversion"("targetAssetId", "date")`,
   `CREATE INDEX IF NOT EXISTS "ProfitTarget_buyLotId_idx" ON "ProfitTarget"("buyLotId")`,
   `CREATE INDEX IF NOT EXISTS "ProfitTarget_isReached_idx" ON "ProfitTarget"("isReached")`,
   `CREATE INDEX IF NOT EXISTS "PriceHistory_assetId_timestamp_idx" ON "PriceHistory"("assetId", "timestamp")`,
@@ -114,6 +137,15 @@ async function main() {
   for (const statement of statements) {
     await prisma.$executeRawUnsafe(statement);
   }
+
+  try {
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Sale" ADD COLUMN "conversionId" TEXT`);
+  } catch (error) {
+    if (!(error instanceof Error) || !error.message.includes("duplicate column name")) throw error;
+  }
+  await prisma.$executeRawUnsafe(
+    `CREATE INDEX IF NOT EXISTS "Sale_conversionId_idx" ON "Sale"("conversionId")`,
+  );
 
   let colorColumnAdded = false;
   try {
