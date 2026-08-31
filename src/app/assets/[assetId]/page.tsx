@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ChevronDown, ListTree } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { AssetCharts } from "@/components/assets/asset-charts";
+import { PriceHistoryExplorer } from "@/components/prices/price-history-explorer";
 import {
   BuyLotEditor,
   AssetConversionEditor,
@@ -135,6 +136,18 @@ export async function AssetLedger({ assetId }: { assetId: string }) {
         <Metric label="未實現損益" value={money(metrics.unrealizedProfit)} tone={tone(metrics.unrealizedProfit)} />
         <Metric label="總報酬率" value={pct(metrics.totalReturnPercent)} tone={tone(metrics.totalReturnPercent)} />
       </div>
+
+      <Panel className="mt-5">
+        <div className="mb-1">
+          <h2 className="font-semibold">{asset.symbol} 市場價格走勢</h2>
+          <p className="mt-1 text-xs text-[var(--muted)]">歷史報價 · 與下方交易批次損益分開計算</p>
+        </div>
+        <PriceHistoryExplorer
+          compact
+          assets={[{ id: asset.id, symbol: asset.symbol, name: asset.name, color: asset.color }]}
+          initialAssetId={asset.id}
+        />
+      </Panel>
 
       <AssetCharts data={chartData} symbol={asset.symbol} />
 

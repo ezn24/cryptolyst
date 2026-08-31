@@ -83,7 +83,12 @@ export default async function DashboardPage() {
               {profit.length ? <ProfitBarChart data={profit} /> : <ChartEmpty />}
             </Panel>
             <Panel>
-              <h2 className="text-sm font-semibold">持倉估算走勢</h2>
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-sm font-semibold">持倉估算走勢</h2>
+                <Link href="/prices" className="inline-flex items-center gap-1 text-xs font-medium text-sky-300 hover:text-sky-200">
+                  完整走勢 <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
               <p className="mb-3 mt-1 text-xs text-[var(--muted)]">以目前剩餘數量按各時間點價格重新估值</p>
               <PortfolioLineChart data={history} series={historySeries} />
             </Panel>

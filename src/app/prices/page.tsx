@@ -1,8 +1,10 @@
 import { Clock3, RefreshCw } from "lucide-react";
 import { updatePricesAction, updateSinglePriceAction } from "@/app/actions";
 import { AppShell } from "@/components/app-shell";
+import { AssetIcon } from "@/components/assets/asset-icon";
 import { ManualPriceForm } from "@/components/forms";
 import { AssetEditor } from "@/components/management-forms";
+import { PriceHistoryExplorer } from "@/components/prices/price-history-explorer";
 import { Button, EmptyState, Panel } from "@/components/ui/primitives";
 import { prisma } from "@/lib/db";
 import { money, pct } from "@/lib/decimal";
@@ -15,10 +17,26 @@ export default async function PricesPage() {
   // eslint-disable-next-line react-hooks/purity
   const staleBefore = Date.now() - 15 * 60 * 1000;
   return (
-    <AppShell title="價格管理" description="即時報價、來源設定與手動覆寫">
+    <AppShell title="價格管理" description="歷史價格、區間走勢與報價來源">
+      {assets.length ? (
+        <Panel className="mb-5">
+          <div className="mb-1">
+            <h2 className="font-semibold">歷史價格與區間走勢</h2>
+            <p className="mt-1 text-xs text-[var(--muted)]">市場價格 · 按報價更新時間記錄</p>
+          </div>
+          <PriceHistoryExplorer
+            assets={assets.map((asset) => ({ id: asset.id, symbol: asset.symbol, name: asset.name, color: asset.color }))}
+            initialAssetId={assets[0]?.id}
+          />
+        </Panel>
+      ) : null}
+
       <Panel>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div className="text-sm text-zinc-500">API 失敗時會保留最後有效價格，不會改為 0。</div>
+          <div>
+            <h2 className="font-semibold">報價來源與手動價格</h2>
+            <p className="mt-1 text-xs text-[var(--muted)]">{assets.length} 個資產 · API 失敗時保留最後有效價格</p>
+          </div>
           <form action={updatePricesAction}>
             <Button type="submit"><RefreshCw className="h-4 w-4" />更新全部價格</Button>
           </form>
@@ -34,7 +52,12 @@ export default async function PricesPage() {
                   const stale = !asset.priceUpdatedAt || asset.priceUpdatedAt.getTime() < staleBefore;
                   return (
                     <tr key={asset.id} className="border-t border-white/10">
-                      <td className="py-3"><span className="font-semibold">{asset.symbol}</span><div className="text-xs text-zinc-500">{asset.name}</div></td>
+                      <td className="py-3">
+                        <div className="flex items-center gap-2">
+                          <AssetIcon symbol={asset.symbol} name={asset.name} iconUrl={asset.iconUrl} color={asset.color} />
+                          <div><span className="font-semibold">{asset.symbol}</span><div className="text-xs text-zinc-500">{asset.name}</div></div>
+                        </div>
+                      </td>
                       <td>{money(asset.currentPrice, asset.priceCurrency)}</td>
                       <td className={asset.priceChange24h.gte(0) ? "text-emerald-300" : "text-rose-300"}>{pct(asset.priceChange24h)}</td>
                       <td>{asset.priceSource}</td>
