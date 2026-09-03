@@ -14,6 +14,7 @@ import {
 } from "recharts";
 import { PRICE_RANGES, type PriceRange } from "@/lib/price-history";
 import { cn } from "@/lib/utils";
+import { PriceComparisonExplorer } from "@/components/prices/price-comparison-explorer";
 
 type AssetOption = { id: string; symbol: string; name: string; color: string };
 type HistoryResponse = {
@@ -56,18 +57,29 @@ function HistoryMetric({ label, value, detail, icon }: { label: string; value: R
   );
 }
 
-export function PriceHistoryExplorer({
-  assets,
-  initialAssetId,
-  compact = false,
-}: {
+type ExplorerProps = {
   assets: AssetOption[];
   initialAssetId?: string;
   compact?: boolean;
-}) {
+  fixedRange?: PriceRange;
+  compare?: boolean;
+};
+
+export function PriceHistoryExplorer(props: ExplorerProps) {
+  return props.compare ? <PriceComparisonExplorer assets={props.assets} range={props.fixedRange ?? "30D"} /> : <SinglePriceHistoryExplorer {...props} />;
+}
+
+function SinglePriceHistoryExplorer({
+  assets,
+  initialAssetId,
+  compact = false,
+  fixedRange,
+}: ExplorerProps) {
   const [assetId, setAssetId] = useState(initialAssetId ?? assets[0]?.id ?? "");
-  const [range, setRange] = useState<PriceRange>("30D");
-  const [data, setData] = useState<HistoryResponse | null>(null);
+  const [selectedRange, setRange] = useState<PriceRange>("30D");
+  const range = fixedRange ?? selectedRange;
+  const [responseData, setData] = useState<HistoryResponse | null>(null);
+  const data = responseData?.range === range && responseData.asset.id === assetId ? responseData : null;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
@@ -100,8 +112,8 @@ export function PriceHistoryExplorer({
 
   const chartData = useMemo(() => data?.points.map((point) => ({
     ...point,
-    label: dateLabel(point.timestamp, range),
-  })) ?? [], [data, range]);
+    time: new Date(point.timestamp).getTime(),
+  })) ?? [], [data]);
   const color = data?.asset.color || assets.find((asset) => asset.id === assetId)?.color || "#38bdf8";
   const change = data?.summary?.changePercent ?? 0;
   const currency = data?.asset.currency ?? "USDT";
@@ -127,13 +139,14 @@ export function PriceHistoryExplorer({
               </select>
             </label>
           ) : null}
-          <div>
+          {!fixedRange ? <div>
             <div className="mb-1 text-xs text-[var(--muted)]">時間跨度</div>
             <div className="flex max-w-full overflow-x-auto rounded-md border border-[var(--border)] bg-[var(--control)] p-1" aria-label="選擇價格時間跨度">
               {PRICE_RANGES.map((option) => (
                 <button
                   key={option}
                   type="button"
+                  aria-pressed={option === range}
                   onClick={() => { setRange(option); setData(null); }}
                   className={cn(
                     "h-8 shrink-0 rounded px-2.5 text-xs font-semibold transition",
@@ -144,11 +157,12 @@ export function PriceHistoryExplorer({
                 </button>
               ))}
             </div>
-          </div>
+          </div> : null}
         </div>
         <button
           type="button"
           title="重新載入歷史價格"
+          aria-label="重新載入歷史價格"
           onClick={() => setReloadKey((key) => key + 1)}
           disabled={loading}
           className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--control)] text-[var(--muted-strong)] hover:text-[var(--foreground)] disabled:opacity-50"
@@ -161,7 +175,7 @@ export function PriceHistoryExplorer({
         <HistoryMetric label="最新價格" value={price(data?.summary?.last, currency)} detail={data?.asset.symbol} />
         <HistoryMetric
           label={`${rangeLabels[range]}漲跌`}
-          value={`${change >= 0 ? "+" : ""}${change.toFixed(2)}%`}
+          value={data?.summary ? `${change >= 0 ? "+" : ""}${change.toFixed(2)}%` : "-"}
           detail={data?.summary ? `${data.summary.change >= 0 ? "+" : ""}${price(data.summary.change, currency)}` : "-"}
           icon={change >= 0 ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
         />
@@ -171,24 +185,24 @@ export function PriceHistoryExplorer({
       </div>
 
       <div className={cn("relative mt-5 w-full", compact ? "h-[300px]" : "h-[380px]")}>
-        {loading && !data ? (
+        {!error && !data ? (
           <div className="absolute inset-0 grid place-items-center text-sm text-[var(--muted)]"><LoaderCircle className="mr-2 inline h-4 w-4 animate-spin" />載入價格歷史</div>
         ) : error ? (
           <div className="absolute inset-0 grid place-items-center text-sm text-rose-400">{error}</div>
         ) : chartData.length < 2 ? (
-          <div className="absolute inset-0 grid place-items-center text-center text-sm text-[var(--muted)]">目前只有一個價格點，下一次價格更新後會開始顯示走勢。</div>
+          <div className="absolute inset-0 grid place-items-center text-center text-sm text-[var(--muted)]">{data?.pointCount ? "目前只有一個價格點，尚不足以顯示走勢。" : "此期間沒有歷史報價。"}</div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={chartData} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
               <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
-              <XAxis dataKey="label" tick={{ fill: "var(--chart-axis)", fontSize: 12 }} tickLine={false} axisLine={{ stroke: "var(--chart-axis)" }} minTickGap={36} />
+              <XAxis dataKey="time" type="number" scale="time" domain={["dataMin", "dataMax"]} tickFormatter={(value) => dateLabel(new Date(value).toISOString(), range)} tick={{ fill: "var(--chart-axis)", fontSize: 12 }} tickLine={false} axisLine={{ stroke: "var(--chart-axis)" }} minTickGap={36} />
               <YAxis domain={["auto", "auto"]} tick={{ fill: "var(--chart-axis)", fontSize: 12 }} tickLine={false} axisLine={false} width={72} tickFormatter={(value) => new Intl.NumberFormat("zh-TW", { notation: "compact", maximumFractionDigits: 2 }).format(value)} />
               <Tooltip
                 contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 6, color: "var(--foreground)" }}
                 labelFormatter={(_, payload) => payload[0]?.payload?.timestamp ? new Date(payload[0].payload.timestamp).toLocaleString("zh-TW") : ""}
                 formatter={(value) => [price(Number(value), currency), "價格"]}
               />
-              <Area type="monotone" dataKey="price" stroke="none" fill={color} fillOpacity={0.12} isAnimationActive={false} />
+              <Area type="monotone" dataKey="price" tooltipType="none" stroke="none" fill={color} fillOpacity={0.12} isAnimationActive={false} />
               <Line type="monotone" dataKey="price" stroke={color} strokeWidth={2} dot={false} activeDot={{ r: 4, fill: color }} isAnimationActive={false} />
             </ComposedChart>
           </ResponsiveContainer>

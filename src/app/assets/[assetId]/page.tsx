@@ -60,8 +60,8 @@ export async function AssetLedger({ assetId }: { assetId: string }) {
     },
     orderBy: [{ date: "desc" }, { createdAt: "desc" }],
   });
-  const chartData = lots.map((lot, index) => ({
-    name: `批次 ${index + 1}`,
+  const chartData = lots.map((lot) => ({
+    name: `批次 ${lot.batchNumber}`,
     bought: lot.quantity.toNumber(),
     sold: lot.metrics.soldQuantity.toNumber(),
     remaining: lot.metrics.remainingQuantity.toNumber(),
@@ -205,7 +205,7 @@ export async function AssetLedger({ assetId }: { assetId: string }) {
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="rounded-sm bg-sky-500/15 px-2 py-0.5 text-xs font-semibold text-sky-300">
-                          批次 {index + 1}
+                          批次 {lot.batchNumber}
                         </span>
                         <span className="font-semibold">買入 {decimalString(lot.quantity)} {asset.symbol}</span>
                         <span className="rounded-sm bg-white/10 px-2 py-0.5 text-xs text-zinc-300">

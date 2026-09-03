@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { holdingStatusRank } from "@/lib/portfolio-history";
 import {
   calculateAssetMetrics,
   calculateBuyLotMetrics,
@@ -56,10 +57,11 @@ export async function getAssetDetail(assetId: string) {
     },
   });
   if (!asset) return null;
-  const lots = asset.buyLots.map((lot) => ({
+  const lots = asset.buyLots.map((lot, index) => ({
     ...lot,
+    batchNumber: index + 1,
     metrics: calculateBuyLotMetrics({ ...lot, currentPrice: asset.currentPrice }),
-  }));
+  })).sort((a, b) => holdingStatusRank(a.metrics.status) - holdingStatusRank(b.metrics.status));
   const metrics = calculateAssetMetrics(asset.buyLots.map((lot) => ({ ...lot, currentPrice: asset.currentPrice })));
   return { asset, lots, metrics };
 }

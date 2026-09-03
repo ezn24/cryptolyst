@@ -1,5 +1,22 @@
 ﻿@import "tailwindcss";
 
+.price-comparison {
+  --comparison-positive: #6ee7b7;
+  --comparison-negative: #fda4af;
+}
+
+:root[data-theme="light"] .price-comparison {
+  --comparison-positive: #087b52;
+  --comparison-negative: #be123c;
+}
+
+@media (prefers-color-scheme: light) {
+  :root[data-theme="system"] .price-comparison {
+    --comparison-positive: #087b52;
+    --comparison-negative: #be123c;
+  }
+}
+
 :root {
   color-scheme: dark;
   --background: #101214;
