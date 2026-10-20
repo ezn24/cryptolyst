@@ -53,7 +53,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/ezn24/nhentai-downloader-web
+          images: ghcr.io/${{ github.repository }}
           flavor: |
             latest=false
           tags: |
